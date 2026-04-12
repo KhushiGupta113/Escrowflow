@@ -4,15 +4,9 @@
   <p align="center">
     A secure, and intuitive full-stack freelance escrow platform.
     <br />
-    <a href="#-features"><strong>Explore the docs »</strong></a>
+    
     <br />
-    <br />
-    <a href="#-api-documentation">API References</a>
-    ·
-    <a href="https://github.com/KhushiGupta113/Escrowflow/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/KhushiGupta113/Escrowflow/issues">Request Feature</a>
-  </p>
+    
 </div>
 
 <!-- BADGES -->
