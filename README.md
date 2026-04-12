@@ -1,11 +1,8 @@
-<!-- PROJECT LOGO -->
-<div align="center">
-  <img src="./frontend/public/favicon.ico" alt="Logo" width="80" height="80" onerror="this.src='https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/typescript/typescript.png'" />
 
   <h1 align="center">EscrowFlow</h1>
 
   <p align="center">
-    A production-grade, secure, and intuitive full-stack freelance escrow platform.
+    A secure, and intuitive full-stack freelance escrow platform.
     <br />
     <a href="#-features"><strong>Explore the docs »</strong></a>
     <br />
