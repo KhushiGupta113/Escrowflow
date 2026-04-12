@@ -1,0 +1,20 @@
+{
+  "name": "escrowflow",
+  "version": "1.0.0",
+  "description": "EscrowFlow full-stack platform",
+  "main": "index.js",
+  "scripts": {
+    "dev:frontend": "npm run dev -w frontend",
+    "dev:backend": "npm run dev -w backend",
+    "build": "npm run build -w frontend && npm run build -w backend"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+}
