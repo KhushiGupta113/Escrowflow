@@ -1,92 +1,170 @@
-# EscrowFlow
+<!-- PROJECT LOGO -->
+<div align="center">
+  <img src="./frontend/public/favicon.ico" alt="Logo" width="80" height="80" onerror="this.src='https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/typescript/typescript.png'" />
 
-EscrowFlow is a production-shaped full-stack freelance escrow platform with a premium dashboard UX and modular backend architecture.
+  <h1 align="center">EscrowFlow</h1>
 
-## Tech Stack
+  <p align="center">
+    A production-grade, secure, and intuitive full-stack freelance escrow platform.
+    <br />
+    <a href="#-features"><strong>Explore the docs »</strong></a>
+    <br />
+    <br />
+    <a href="#-api-documentation">API References</a>
+    ·
+    <a href="https://github.com/KhushiGupta113/Escrowflow/issues">Report Bug</a>
+    ·
+    <a href="https://github.com/KhushiGupta113/Escrowflow/issues">Request Feature</a>
+  </p>
+</div>
 
-- Frontend: Next.js (React + TypeScript), Tailwind CSS, Framer Motion, React Hook Form + Zod, TanStack Query, Recharts, Socket.io client, Sonner toasts
-- Backend: Node.js + Express + TypeScript, MongoDB (Mongoose), Redis, JWT auth, Socket.io, Razorpay integration, rate limiting, Swagger UI
+<!-- BADGES -->
+<div align="center">
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next JS" />
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node JS" />
+  <img src="https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+</div>
 
-## Core Product Flows Implemented
+<br />
 
-- User signup/login/refresh (Client, Freelancer, Admin roles)
-- Client project creation
-- Milestone creation and status lifecycle
-- Escrow funding initiation with Razorpay order creation
-- Payment verification and funded status transition
-- Freelancer work submission
-- Safe milestone release with Redis lock and idempotency guard
-- Dispute raise + admin resolution path
-- Notifications feed endpoint and real-time socket channels
-- Dashboard summary endpoint for SaaS-style widgets
+## 📖 About The Project
 
-## Folder Structure
+**EscrowFlow** is a complete, scalable escrow payment and milestone management solution tailored for clients, freelancers, and administrators. By leveraging modern web technologies, it bridges the trust gap between parties via secure payments and automated milestone tracking.
 
-- `frontend/` modern UI shell and dashboard experience
-- `backend/` API modules, data models, and real-time/payment logic
+A premium dashboard UI offers a frictionless interface while a robust, rate-limited, and protected backend architecture ensures user security and idempotency when pushing transactions. 
 
-## Backend Architecture
+### 🌟 Key Product Flows
 
-- `src/server.ts` app bootstrap, DB + Redis connect, Socket initialization
-- `src/app.ts` routes, middleware, validation, controllers (modular boundaries in one file baseline)
-- `src/models.ts` Mongo schemas: users, projects, milestones, payments, disputes, notifications, audit logs
-- `src/socket.ts` project/user room events for live updates
+- **Multi-tenant Architecture:** distinct authorization flows and bespoke dashboards for `Client`, `Freelancer`, and `Admin` roles.
+- **Milestone Lifecycles:** granular project tracking and safe escrow fund releases based on approval logic.
+- **Payment Gateway Integration:** automated escrow funding and invoice settlement using Razorpay.
+- **Dispute Resolution:** an unbiased conflict management system, fully operated by platform super-admins.
+- **Real-time Engine:** live notification feed and channel broadcasts utilizing WebSockets (`Socket.io`).
 
-## Setup
+---
 
-1. Install deps (root workspace):
+## 🛠️ Tech Stack & Architecture
 
-```bash
-npm install
+### **Frontend (`/frontend`)**
+* **Framework:** Next.js (React 19) + TypeScript
+* **Styling Tools:** Tailwind CSS v4, Framer Motion for micro-animations
+* **Form & State:** React Hook Form + Zod, TanStack React Query (`v5`)
+* **Realtime & UI Libraries:** Recharts, Socket.io-client, Sonner, Lucide React
+
+### **Backend (`/backend`)**
+* **Core:** Node.js, Express, TypeScript
+* **Database:** MongoDB via Mongoose
+* **Auth & Security:** JWT Auth, bcryptjs, Helmet, Express Rate Limit, Cookie Parser
+* **Payments:** Razorpay SDK
+* **Realtime API:** Socket.io
+* **Documentation:** Swagger UI integration
+
+---
+
+## 🚀 Getting Started
+
+Follow these instructions to run EscrowFlow locally.
+
+### Prerequisites
+
+Ensure you have installed the following on your workstation:
+- [Node.js](https://nodejs.org/) (v20+)
+- [npm](https://www.npmjs.com/) or another package manager
+- [MongoDB](https://www.mongodb.com/try/download/community) (Local instance or Atlas URI)
+
+### Local Development Setup
+
+1. **Clone the repository**
+   ```sh
+   git clone https://github.com/KhushiGupta113/Escrowflow.git
+   cd Escrowflow
+   ```
+
+2. **Install root dependencies** (if applicable)
+   ```sh
+   npm install
+   ```
+
+3. **Configure Environment Variables**
+   Navigate to the backend and setup the `.env` file via the example provided:
+   ```sh
+   cp backend/.env.example backend/.env
+   ```
+   *Make sure you provide your personal `MONGO_URI`, `JWT_SECRET`, and Razorpay Keys inside `.env`.*
+
+4. **Boot Up Services**
+   Fire up both backend and frontend environments concurrently:
+   ```sh
+   npm run dev:backend
+   npm run dev:frontend
+   ```
+   * The **Frontend** should run on [`http://localhost:3000`](http://localhost:3000)
+   * The **Backend** should run on [`http://localhost:5000`](http://localhost:5000)
+
+---
+
+## 🗂️ Project Structure
+
+```text
+📦 EscrowFlow
+ ┣ 📂 backend/
+ ┃ ┣ 📂 src/
+ ┃ ┃ ┣ 📜 server.ts      # App bootstrapping & DB Connections
+ ┃ ┃ ┣ 📜 app.ts         # Middleware setups & unified MVC routing
+ ┃ ┃ ┣ 📜 models.ts      # Collections strictly typed in Mongoose
+ ┃ ┃ ┗ 📜 socket.ts      # Socket emit/receive channels
+ ┃ ┗ 📜 package.json
+ ┣ 📂 frontend/
+ ┃ ┣ 📂 src/
+ ┃ ┃ ┣ 📂 app/           # Next.js App Router UI Layer
+ ┃ ┃ ┣ 📂 components/    # Reusable shadcn/custom components
+ ┃ ┃ ┣ 📂 lib/           # Utils and API wrappers
+ ┃ ┃ ┗ 📂 hooks/         # React lifecycle & State
+ ┃ ┗ 📜 package.json
+ ┗ 📜 package.json       # Monorepo/Root configurations
 ```
 
-2. Configure backend env:
+---
 
-```bash
-cp backend/.env.example backend/.env
-```
+## 📡 API Documentation
 
-3. Start backend and frontend in separate terminals:
+A summarized slice of available API endpoints. For the full experience, interact with the **Swagger UI** on `/api/docs` while running the application.
 
-```bash
-npm run dev:backend
-npm run dev:frontend
-```
+| Domain        | Action | Endpoint URL |
+| ------------- | :--- | :----------- |
+| **System**    | `GET` | `/health` |
+| **Auth**      | `POST` | `/api/auth/signup` <br> `/api/auth/login` <br> `/api/auth/refresh` |
+| **Projects**  | `GET` / `POST` | `/api/projects` |
+| **Milestones**| `POST` | `/api/milestones` <br> `/api/milestones/:id/submit` |
+| **Escrow**    | `POST` | `/api/escrow/fund/:id` <br> `/api/escrow/verify` <br> `/api/escrow/release/:id` |
+| **Disputes**  | `POST` | `/api/disputes` <br> `/api/admin/disputes/:id/resolve` |
 
-Frontend runs at `http://localhost:3000`, backend at `http://localhost:5000`.
+---
 
-## API Notes
+## 📈 Roadmap & Upcoming Features
 
-- Health: `GET /health`
-- Auth:
-  - `POST /api/auth/signup`
-  - `POST /api/auth/login`
-  - `POST /api/auth/refresh`
-- Projects:
-  - `POST /api/projects`
-  - `GET /api/projects`
-- Milestones:
-  - `POST /api/milestones`
-  - `POST /api/milestones/:id/submit`
-- Escrow:
-  - `POST /api/escrow/fund/:milestoneId`
-  - `POST /api/escrow/verify`
-  - `POST /api/escrow/release/:milestoneId`
-- Disputes:
-  - `POST /api/disputes`
-  - `POST /api/admin/disputes/:id/resolve`
-- Notifications:
-  - `GET /api/notifications`
-- Dashboard:
-  - `GET /api/dashboard/summary`
-- Docs:
-  - `GET /api/docs`
+- [ ] **Tighter Domain Segregation:** Move from `.app.ts` unified models to fully segregated `/controllers`, `/services`, and `/routes`.
+- [ ] **Image Upload Pipeline:** Secure S3/Cloudinary bucket integration for dispute evidence support.
+- [ ] **End-to-End Testing:** Automate system health checks utilizing Cypress/Playwright.
+- [ ] **Admin Metrics Optimization:** Enhance audit tracking and analytic caching for rapid dashboard rendering.
 
-## Production Hardening Next Steps
+---
 
-- Split `app.ts` into strict modules (routes/controllers/services/validators per domain)
-- Add refresh token persistence and revocation in Redis
-- Razorpay signature verification + webhook endpoint
-- Integrate upload pipeline (Cloudinary/S3) for dispute evidence
-- Add integration tests and e2e tests
-- Improve audit logging and admin moderation analytics
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome!  
+Feel free to check out the [issues page](https://github.com/KhushiGupta113/Escrowflow/issues).
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+<div align="center">
+  <p>Built with ❤️ for secure collaborations.</p>
+</div>
