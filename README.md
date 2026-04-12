@@ -3,9 +3,6 @@
 
   <p align="center">
     A secure, and intuitive full-stack freelance escrow platform.
-    <br />
-    
-    <br />
     
 </div>
 
