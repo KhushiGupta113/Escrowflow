@@ -95,7 +95,7 @@ app.post("/api/generate-brief", async (req, res) => {
     
     const ai = new GoogleGenAI({ apiKey });
     const aiResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: `You are an expert escrow project architect. Take the following client prompt and output a perfectly structured Project Brief.
       Format your response strictly as JSON with exactly these keys:
       {
