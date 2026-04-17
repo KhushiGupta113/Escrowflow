@@ -219,8 +219,8 @@ export default function ProjectDetailsPage() {
                   {title.toLowerCase().includes("milestone") ? (
                     <div className="space-y-4">
                       {(() => {
-                        const mstones = [];
-                        let curr = null;
+                        const mstones: { header: string | null; bullets?: string[]; text?: string }[] = [];
+                        let curr: { header: string | null; bullets: string[] } | null = null;
                         lines.forEach(line => {
                           const t = line.trim();
                           if (!t) return;
