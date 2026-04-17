@@ -1,10 +1,10 @@
 import dotenv from "dotenv";
+dotenv.config();
+
 import http from "http";
 import mongoose from "mongoose";
 import { app } from "./app";
 import { initSocket } from "./socket";
-
-dotenv.config();
 
 const port = Number(process.env.PORT ?? 5000);
 const mongoUri = process.env.MONGO_URI ?? "mongodb://127.0.0.1:27017/escrowflow";
