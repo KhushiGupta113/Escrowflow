@@ -105,17 +105,22 @@ app.post("/api/generate-brief", async (req, res) => {
     
     const ai = new GoogleGenAI({ apiKey });
     const aiResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `You are an expert escrow project architect. Take the following client prompt and output a perfectly structured Project Brief.
-      Format your response strictly as JSON with exactly these keys:
-      {
-        "title": "A short professional title",
-        "description": "A detailed multi-line markdown string containing '## Project Overview', '## Suggested Milestones (with % breakdown)', and '## Requirements'"
-      }
-      
-      Client Prompt: "${prompt}"
-      
-      Return ONLY valid JSON. No Markdown.`
+      model: "gemini-1.5-flash",
+      contents: [{
+        role: "user",
+        parts: [{
+          text: `You are an expert escrow project architect. Take the following client prompt and output a perfectly structured Project Brief.
+          Format your response strictly as JSON with exactly these keys:
+          {
+            "title": "A short professional title",
+            "description": "A detailed multi-line markdown string containing '## Project Overview', '## Suggested Milestones (with % breakdown)', and '## Requirements'"
+          }
+          
+          Client Prompt: "${prompt}"
+          
+          Return ONLY valid JSON. No Markdown.`
+        }]
+      }]
     });
     
     let text = aiResponse.text || "";
