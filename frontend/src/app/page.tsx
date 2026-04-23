@@ -78,31 +78,34 @@ export default function Home() {
     }
   };
 
+  const fetchMarketplace = async () => {
+    try {
+      const data = await api<any[]>("/api/marketplace");
+      if (data) setMarketplaceProjects(data);
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({ id: payload.sub, role: payload.role });
+        const currRole = payload.role;
+        setUser({ id: payload.sub, role: currRole });
+
+        // Only fetch relative to role
+        fetchSummary();
+        if (currRole === "client") {
+          fetchProjects();
+        } else if (currRole === "freelancer") {
+          fetchMarketplace();
+        }
       } catch (e) {
         console.error("Failed to decode token", e);
       }
     }
-    
-    fetchProjects();
-    fetchSummary();
-    
-    // Fetch marketplace for freelancers
-    const fetchMarketplace = async () => {
-      try {
-        // We'll create this endpoint in the backend next
-        const data = await api<any[]>("/api/marketplace");
-        if (data) setMarketplaceProjects(data);
-      } catch {
-        // ignore if not implemented yet
-      }
-    };
-    fetchMarketplace();
   }, []);
 
   const statusClass = useMemo(
@@ -346,8 +349,8 @@ export default function Home() {
         {/* Full-width Released Payments Trend Chart */}
         <article className="glass-card p-6 flex flex-col">
           <h2 className="mb-6 text-lg font-bold text-white">Released Payments Trend</h2>
-          <div className="flex-1 min-h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="min-h-[300px] h-[300px] w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minHeight={280}>
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorReleased" x1="0" y1="0" x2="0" y2="1">

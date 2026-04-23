@@ -83,7 +83,7 @@ const paymentSchema = new Schema(
     status: { 
       type: String, 
       required: true, 
-      enum: ["initiated", "verified", "failed", "released", "refunded"],
+      enum: ["initiated", "verified", "failed", "released", "refunded", "withdrawn"],
       index: true 
     }
   },

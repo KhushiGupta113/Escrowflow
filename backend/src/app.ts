@@ -95,7 +95,7 @@ app.post("/api/generate-brief", async (req, res) => {
     
     const ai = new GoogleGenAI({ apiKey });
     const aiResponse = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: `You are an expert escrow project architect. Take the following client prompt and output a perfectly structured Project Brief.
       Format your response strictly as JSON with exactly these keys:
       {
@@ -200,20 +200,20 @@ app.post("/api/auth/login", async (req, res) => {
   const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
   if (!ok) return res.status(401).json({ success: false, message: "Invalid credentials" });
 
-  const accessToken = jwt.sign({ sub: String(user._id), role: user.role }, accessSecret, { expiresIn: "15m" });
-  const refreshToken = jwt.sign({ sub: String(user._id) }, refreshSecret, { expiresIn: "7d" });
-  res.cookie("refreshToken", refreshToken, { httpOnly: true, sameSite: "lax", secure: false, path: "/api/auth" });
-  response(res, { accessToken, user: { id: user._id, role: user.role, name: user.name, email: user.email } });
-});
-
-app.post("/api/auth/refresh", async (req, res) => {
-  const token = req.cookies.refreshToken as string | undefined;
-  if (!token) return res.status(401).json({ success: false, message: "Missing refresh token" });
-  try {
-    const decoded = jwt.verify(token, refreshSecret) as { sub: string };
-    const user = await User.findById(decoded.sub);
-    if (!user) return res.status(401).json({ success: false, message: "Invalid user" });
-    const accessToken = jwt.sign({ sub: String(user._id), role: user.role }, accessSecret, { expiresIn: "15m" });
+    const accessToken = jwt.sign({ sub: String(user._id), role: user.role }, accessSecret, { expiresIn: "24h" });
+    const refreshToken = jwt.sign({ sub: String(user._id) }, refreshSecret, { expiresIn: "7d" });
+    res.cookie("refreshToken", refreshToken, { httpOnly: true, sameSite: "lax", secure: false, path: "/api/auth" });
+    response(res, { accessToken, user: { id: user._id, role: user.role, name: user.name, email: user.email } });
+  });
+  
+  app.post("/api/auth/refresh", async (req, res) => {
+    const token = req.cookies.refreshToken as string | undefined;
+    if (!token) return res.status(401).json({ success: false, message: "Missing refresh token" });
+    try {
+      const decoded = jwt.verify(token, refreshSecret) as { sub: string };
+      const user = await User.findById(decoded.sub);
+      if (!user) return res.status(401).json({ success: false, message: "Invalid user" });
+      const accessToken = jwt.sign({ sub: String(user._id), role: user.role }, accessSecret, { expiresIn: "24h" });
     return response(res, { accessToken });
   } catch {
     return res.status(401).json({ success: false, message: "Invalid refresh token" });
@@ -323,22 +323,66 @@ app.post("/api/escrow/verify", authRequired("client"), async (req, res) => {
   response(res, payment, "Payment verified");
 });
 
-app.post("/api/milestones/:id/submit", authRequired("freelancer"), async (req, res) => {
+app.post("/api/milestones/:id/submit", authRequired("freelancer"), async (req: AuthReq, res) => {
   const schema = z.object({ submissionUrl: z.string().url() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.message });
-  const milestone = await Milestone.findByIdAndUpdate(
-    req.params.id,
-    { status: "submitted", submissionUrl: parsed.data.submissionUrl },
-    { new: true }
-  );
+  const milestone = await Milestone.findById(req.params.id);
   if (!milestone) return res.status(404).json({ success: false, message: "Milestone not found" });
-  response(res, milestone, "Work submitted");
+  const project = await Project.findById((milestone as any).projectId);
+  if (!project) return res.status(404).json({ success: false, message: "Project not found" });
+  if (!project.freelancerId || String(project.freelancerId) !== req.user!.id) {
+    return res.status(403).json({ success: false, message: "Only the assigned freelancer can submit work for this milestone" });
+  }
+  if (!["funded", "in_progress"].includes((milestone as any).status)) {
+    return res.status(400).json({ success: false, message: "Milestone must be funded before you can submit work" });
+  }
+
+  (milestone as any).status = "submitted";
+  (milestone as any).submissionUrl = parsed.data.submissionUrl;
+  await milestone.save();
+
+  const title = (milestone as any).title as string;
+  await Notification.create({
+    userId: project.clientId,
+    type: "milestone_submitted",
+    title: "Work ready for review",
+    message: `Your freelancer submitted deliverables for “${title}”. Review the proof and release payment when satisfied.`,
+    read: false
+  });
+  emitToUser(String(project.clientId), "notification", {
+    type: "milestone_submitted",
+    milestoneId: String(milestone._id),
+    projectId: String(project._id),
+    title
+  });
+  emitToProject(String(project._id), "milestone:updated", { milestoneId: String(milestone._id), status: "submitted" });
+
+  // Email Notification for Client
+  try {
+    const client = await User.findById(project.clientId);
+    if (client?.email) {
+      await sendEmail(
+        client.email,
+        "Deliverables Submitted — Action Required",
+        `Hi ${client.name},\n\nYour freelancer has submitted deliverables for "${title}".\n\nYou can review the work and release escrowed funds at your project dashboard: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/projects/${project._id}`
+      );
+    }
+  } catch (err) {
+    console.error("Failed to send submission email:", err);
+  }
+
+  response(res, milestone, "Work submitted — your client has been notified");
 });
 
 app.post("/api/escrow/release/:milestoneId", authRequired("client", "admin"), async (req: AuthReq, res) => {
   const milestone = await Milestone.findById(req.params.milestoneId);
   if (!milestone) return res.status(404).json({ success: false, message: "Milestone not found" });
+  const project = await Project.findById((milestone as any).projectId);
+  if (!project) return res.status(404).json({ success: false, message: "Project not found" });
+  if (req.user!.role === "client" && String(project.clientId) !== req.user!.id) {
+    return res.status(403).json({ success: false, message: "Only the project client can release this payment" });
+  }
   if ((milestone as any).status === "released") return res.status(409).json({ success: false, message: "Already released" });
   if (!["approved", "submitted"].includes((milestone as any).status)) {
     return res.status(400).json({ success: false, message: "Milestone not releaseable" });
@@ -346,7 +390,65 @@ app.post("/api/escrow/release/:milestoneId", authRequired("client", "admin"), as
   (milestone as any).status = "released";
   await milestone.save();
   await Payment.create({ milestoneId: milestone._id, amount: (milestone as any).amount, payerId: req.user?.id, status: "released" });
+  if (project.freelancerId) {
+    await Notification.create({
+      userId: project.freelancerId as any,
+      type: "payment_released",
+      title: "Payment released",
+      message: `The client released escrow for “${(milestone as any).title}”. You can withdraw from your wallet.`,
+      read: false
+    });
+    emitToUser(String(project.freelancerId), "notification", {
+      type: "payment_released",
+      milestoneId: String(milestone._id),
+      projectId: String(project._id)
+    });
+
+    // Email Notification for Freelancer
+    try {
+      const freelancer = await User.findById(project.freelancerId);
+      if (freelancer?.email) {
+        await sendEmail(
+          freelancer.email,
+          "Vault Unlocked — Payment Released",
+          `Congratulations ${freelancer.name}!\n\nThe client has released the escrow payment for "${(milestone as any).title}".\n\nYour funds are now available in your wallet for withdrawal.`
+        );
+      }
+    } catch (err) {
+      console.error("Failed to send release email:", err);
+    }
+  }
   response(res, milestone, "Funds released");
+});
+
+/** Freelancer withdraws released escrow to their wallet / linked account (idempotent). */
+app.post("/api/escrow/withdraw/:milestoneId", authRequired("freelancer"), async (req: AuthReq, res) => {
+  const milestone = await Milestone.findById(req.params.milestoneId);
+  if (!milestone) return res.status(404).json({ success: false, message: "Milestone not found" });
+  if ((milestone as any).status !== "released") {
+    return res.status(400).json({ success: false, message: "Funds are not available to withdraw yet" });
+  }
+  const project = await Project.findById((milestone as any).projectId);
+  if (!project) return res.status(404).json({ success: false, message: "Project not found" });
+  if (String(project.freelancerId) !== req.user!.id) {
+    return res.status(403).json({ success: false, message: "Only the assigned freelancer can withdraw" });
+  }
+  const existing = await Payment.findOne({ milestoneId: milestone._id, status: "withdrawn" });
+  if (existing) {
+    return res.status(409).json({ success: false, message: "Withdrawal already completed for this milestone" });
+  }
+  await Payment.create({
+    milestoneId: milestone._id,
+    payerId: project.clientId as any,
+    payeeId: req.user!.id as any,
+    amount: (milestone as any).amount,
+    status: "withdrawn"
+  });
+  response(
+    res,
+    { milestoneId: milestone._id, amount: (milestone as any).amount, currency: "INR" },
+    "Withdrawal recorded — funds will settle to your linked account per payout schedule"
+  );
 });
 
 app.post("/api/disputes", authRequired("client", "freelancer"), async (req: AuthReq, res) => {
