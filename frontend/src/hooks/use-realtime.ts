@@ -6,7 +6,7 @@ import { io } from "socket.io-client";
 export function useRealtime(userId?: string, projectId?: string) {
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:5000";
-    const socket = io(url, { transports: ["websocket"] });
+    const socket = io(url, { transports: ["websocket"], withCredentials: true });
     if (userId) socket.emit("join:user", userId);
     if (projectId) socket.emit("join:project", projectId);
     return () => {
