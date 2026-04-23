@@ -9,8 +9,14 @@ import { initSocket } from "./socket";
 const port = Number(process.env.PORT ?? 5000);
 const mongoUri = process.env.MONGO_URI ?? "mongodb://127.0.0.1:27017/escrowflow";
 
+let isConnected = false;
+
 async function bootstrap() {
-  await mongoose.connect(mongoUri);
+  if (!isConnected) {
+    await mongoose.connect(mongoUri);
+    isConnected = true;
+  }
+  
   const server = http.createServer(app);
   initSocket(server);
 
