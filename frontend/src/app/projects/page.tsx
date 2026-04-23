@@ -18,6 +18,7 @@ type Project = {
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -25,8 +26,9 @@ export default function ProjectsPage() {
       try {
         const data = await api<Project[]>("/api/projects");
         if (data) setProjects(data);
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
+        setError(err.message || "Failed to load projects");
       } finally {
         setLoading(false);
       }
@@ -47,6 +49,11 @@ export default function ProjectsPage() {
       {loading ? (
         <div className="flex items-center justify-center p-20 animate-pulse">
           <div className="w-8 h-8 rounded-full border-4 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
+        </div>
+      ) : error ? (
+        <div className="glass-card p-12 text-center border-rose-500/20">
+          <p className="text-rose-400 mb-4">{error}</p>
+          <button onClick={() => window.location.reload()} className="btn-primary rounded-xl px-4 py-2 text-sm">Retry</button>
         </div>
       ) : projects.length === 0 ? (
         <div className="glass-card p-12 text-center flex flex-col items-center justify-center border-dashed border-white/10">

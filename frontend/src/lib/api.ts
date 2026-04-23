@@ -19,6 +19,16 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   
   const payload = await response.json().catch(() => ({}));
+  
+  if (response.status === 401 || response.status === 403) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("accessToken");
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login?error=session_expired";
+      }
+    }
+  }
+
   if (!response.ok) throw new Error(payload?.message ?? "Request failed");
   return payload.data as T;
 }

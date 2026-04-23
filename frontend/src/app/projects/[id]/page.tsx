@@ -1,11 +1,10 @@
 "use client";
-// Force re-trigger Vercel build v2
-
 
 import { PageShell } from "@/components/page-shell";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 
 type Milestone = {
@@ -15,6 +14,7 @@ type Milestone = {
   status: string;
   dueDate?: string;
   updatedAt?: string;
+  submissionUrl?: string;
 };
 
 type Project = {
@@ -42,6 +42,26 @@ export default function ProjectDetailsPage() {
   const [submitModal, setSubmitModal] = useState<{isOpen: boolean, milestoneId: string}>({ isOpen: false, milestoneId: "" });
   const [submissionUrl, setSubmissionUrl] = useState("");
   const [isSubmittingWork, setIsSubmittingWork] = useState(false);
+
+  const [userRole, setUserRole] = useState<"client" | "freelancer" | "admin" | null>(null);
+  const [withdrawLoadingId, setWithdrawLoadingId] = useState<string | null>(null);
+  const [releaseLoadingId, setReleaseLoadingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      if (!token) {
+        setUserRole(null);
+        return;
+      }
+      const payload = JSON.parse(atob(token.split(".")[1])) as { role?: string };
+      const r = payload.role;
+      if (r === "client" || r === "freelancer" || r === "admin") setUserRole(r);
+      else setUserRole(null);
+    } catch {
+      setUserRole(null);
+    }
+  }, []);
 
   const fetchDetails = async () => {
     try {
@@ -141,6 +161,32 @@ export default function ProjectDetailsPage() {
     }
   };
 
+  const handleReleasePayment = async (milestoneId: string) => {
+    setReleaseLoadingId(milestoneId);
+    try {
+      await api(`/api/escrow/release/${milestoneId}`, { method: "POST" });
+      toast.success("Payment released from escrow.");
+      fetchDetails();
+    } catch (e: any) {
+      toast.error(e.message || "Could not release payment.");
+    } finally {
+      setReleaseLoadingId(null);
+    }
+  };
+
+  const handleWithdraw = async (milestoneId: string) => {
+    setWithdrawLoadingId(milestoneId);
+    try {
+      await api(`/api/escrow/withdraw/${milestoneId}`, { method: "POST" });
+      toast.success("Withdrawal initiated — funds will appear in your wallet after processing.");
+      router.push("/wallet");
+    } catch (e: any) {
+      toast.error(e.message || "Could not process withdrawal.");
+    } finally {
+      setWithdrawLoadingId(null);
+    }
+  };
+
   const handleSubmitWork = async () => {
     if (!submissionUrl) return toast.error("Please provide a valid work URL (e.g. GitHub, Figma).");
     setIsSubmittingWork(true);
@@ -149,7 +195,7 @@ export default function ProjectDetailsPage() {
         method: "POST",
         body: JSON.stringify({ submissionUrl })
       });
-      toast.success("Work securely submitted to the client for review!");
+      toast.success("Submitted — your client is notified and can review & release payment here.");
       setSubmitModal({ isOpen: false, milestoneId: "" });
       setSubmissionUrl("");
       fetchDetails();
@@ -221,8 +267,13 @@ export default function ProjectDetailsPage() {
                   {title.toLowerCase().includes("milestone") ? (
                     <div className="space-y-4">
                       {(() => {
-                        const mstones: { header: string | null; bullets?: string[]; text?: string }[] = [];
-                        let curr: { header: string | null; bullets: string[] } | null = null;
+                        interface ParsedMilestone {
+                          header: string | null;
+                          bullets?: string[];
+                          text?: string;
+                        }
+                        const mstones: ParsedMilestone[] = [];
+                        let curr: { header: string; bullets: string[] } | null = null;
                         lines.forEach(line => {
                           const t = line.trim();
                           if (!t) return;
@@ -259,7 +310,7 @@ export default function ProjectDetailsPage() {
                                 </span>
                               </div>
                               <div className="space-y-2.5 pl-14">
-                                {m.bullets.map((b: string, idx: number) => (
+                                {m.bullets?.map((b: string, idx: number) => (
                                   <div key={idx} className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-slate-600 mt-1.5 flex-shrink-0"></div>
                                     <p className="text-sm text-slate-400 leading-relaxed">{b}</p>
@@ -326,9 +377,13 @@ export default function ProjectDetailsPage() {
                 <h3 className="text-lg font-bold text-white mb-2">Live Escrow Balance</h3>
                 <p className="text-3xl font-bold text-white mb-3">₹{escrowBalance.toLocaleString("en-IN")}</p>
                 <p className="text-center text-xs text-slate-400 leading-relaxed px-2">
-                  {isFunded 
-                    ? "This exact amount is currently secured in a neutral third-party trust, ready for release upon approval." 
-                    : "Your vault is currently empty. Fund a milestone payload below to securely bond it."}
+                  {isFunded
+                    ? userRole === "freelancer"
+                      ? "Escrow is funded for this project. Submit work per milestone; after release you can withdraw to your wallet."
+                      : "This exact amount is currently secured in a neutral third-party trust, ready for release upon approval."
+                    : userRole === "freelancer"
+                      ? "Waiting for the client to fund milestones. You’ll submit work once escrow is locked."
+                      : "Your vault is currently empty. Fund a milestone payload below to securely bond it."}
                 </p>
               </>
             );
@@ -338,12 +393,26 @@ export default function ProjectDetailsPage() {
 
       {/* Milestones Pipeline */}
       <section className="glass-card p-8">
+        {userRole === "client" &&
+          milestones.some((m) => (m.status || "").toLowerCase() === "submitted") && (
+            <div className="mb-6 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              <span className="font-bold">Action required:</span> A freelancer submitted work — open the deliverable link below, then{" "}
+              <strong>Release payment</strong> when you accept it. Check{" "}
+              <Link href="/notifications" className="underline font-semibold text-white hover:text-amber-50">
+                Notifications
+              </Link>{" "}
+              for updates.
+            </div>
+          )}
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
           <h2 className="text-xl font-bold text-white">Milestone Pipeline</h2>
-          <button onClick={() => setShowMilestoneForm(true)} className="text-indigo-400 hover:text-indigo-300 text-sm font-semibold transition flex items-center justify-center gap-2 bg-indigo-500/10 px-5 py-2.5 rounded-lg border border-indigo-500/20 w-full sm:w-auto">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Add Milestone
-          </button>
+          {userRole === "client" && (
+            <button onClick={() => setShowMilestoneForm(true)} className="text-indigo-400 hover:text-indigo-300 text-sm font-semibold transition flex items-center justify-center gap-2 bg-indigo-500/10 px-5 py-2.5 rounded-lg border border-indigo-500/20 w-full sm:w-auto">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Add Milestone
+            </button>
+          )}
         </div>
 
         {/* Milestone Creation Modal */}
@@ -435,46 +504,153 @@ export default function ProjectDetailsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {milestones.map((ms, index) => (
-              <div key={ms._id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors gap-4">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold border border-indigo-500/20 text-sm">
+            {milestones.map((ms, index) => {
+              const st = (ms.status || "draft").toLowerCase();
+              const isClient = userRole === "client";
+              const isFreelancer = userRole === "freelancer";
+
+              return (
+              <div
+                key={ms._id}
+                className="rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors overflow-hidden"
+              >
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-5 gap-4">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold border border-indigo-500/20 text-sm shrink-0">
                     0{index + 1}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h4 className="text-white font-bold">{ms.title}</h4>
-                    <span className="text-xs font-medium text-slate-400 uppercase tracking-widest">{ms.status || 'Draft'}</span>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <span className="text-xs font-medium text-slate-400 uppercase tracking-widest">{ms.status || "Draft"}</span>
+                      {st === "submitted" && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          Awaiting client review
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-6 self-stretch md:self-auto border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 pl-0 md:pl-6 w-full md:w-auto mt-4 md:mt-0 justify-between">
+                <div className="flex items-center gap-6 self-stretch md:self-auto border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 pl-0 md:pl-6 w-full md:w-auto md:mt-0 justify-between shrink-0">
                   <div>
                     <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-0.5">Release Value</p>
                     <p className="text-white font-bold whitespace-nowrap">₹{ms.amount.toLocaleString("en-IN")}</p>
                   </div>
                   
-                  {ms.status === 'draft' ? (
-                    <button onClick={() => handleFundEscrow(ms._id)} className="btn-primary px-5 py-2.5 rounded-xl font-bold text-white text-sm whitespace-nowrap shadow-[0_0_15px_rgba(99,102,241,0.2)]">Fund into Escrow</button>
-                  ) : ms.status === 'funded' ? (
-                    <div className="flex gap-2 items-center">
-                      <span className="px-3 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-2 whitespace-nowrap h-10">
-                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div> Secure
+                  {st === "draft" ? (
+                    isClient ? (
+                      <button type="button" onClick={() => handleFundEscrow(ms._id)} className="btn-primary px-5 py-2.5 rounded-xl font-bold text-white text-sm whitespace-nowrap shadow-[0_0_15px_rgba(99,102,241,0.2)]">Fund into Escrow</button>
+                    ) : isFreelancer ? (
+                      <span className="px-4 py-2.5 rounded-xl bg-slate-500/15 text-slate-300 border border-white/10 text-xs font-semibold whitespace-nowrap text-center max-w-[200px]">
+                        Awaiting client funding
                       </span>
-                      <button onClick={() => setSubmitModal({ isOpen: true, milestoneId: ms._id })} className="btn-primary px-5 py-2.5 rounded-xl font-bold text-white text-sm whitespace-nowrap h-10 flex items-center">Submit Work</button>
+                    ) : (
+                      <span className="text-xs text-slate-500">Sign in as client or freelancer</span>
+                    )
+                  ) : st === "funded" ? (
+                    <div className="flex gap-2 items-center flex-wrap justify-end">
+                      <span className="px-3 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-2 whitespace-nowrap h-10">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Secure
+                      </span>
+                      {isFreelancer ? (
+                        <button type="button" onClick={() => setSubmitModal({ isOpen: true, milestoneId: ms._id })} className="btn-primary px-5 py-2.5 rounded-xl font-bold text-white text-sm whitespace-nowrap h-10 flex items-center">Submit Work</button>
+                      ) : isClient ? (
+                        <span className="px-4 py-2.5 rounded-xl bg-white/5 text-slate-300 border border-white/10 text-xs font-semibold whitespace-nowrap h-10 flex items-center">Awaiting delivery</span>
+                      ) : null}
                     </div>
-                  ) : ms.status === 'submitted' ? (
-                    <span className="px-4 py-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 text-sm font-bold whitespace-nowrap flex items-center justify-center">In Review</span>
-                  ) : ms.status === 'cleared' || ms.status === 'released' || ms.status === 'approved' ? (
-                    <div className="text-right flex flex-col items-end">
-                      <span className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-xs font-bold text-slate-300 mb-1">Cleared</span>
-                      <p className="text-[10px] text-slate-500 whitespace-nowrap">{new Date(ms.updatedAt || Date.now()).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
-                    </div>
+                  ) : st === "submitted" ? (
+                    isFreelancer ? (
+                      <span className="px-4 py-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold whitespace-nowrap text-center max-w-[160px]">
+                        In review
+                      </span>
+                    ) : isClient ? (
+                      <span className="text-[10px] text-amber-200/80 uppercase tracking-wider">Review ↓</span>
+                    ) : (
+                      <span className="px-4 py-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 text-sm font-bold">In Review</span>
+                    )
+                  ) : st === "approved" ? (
+                    isFreelancer ? (
+                      <span className="px-4 py-2.5 rounded-xl bg-slate-500/20 text-slate-300 border border-white/10 text-xs font-semibold whitespace-nowrap">Pending client release</span>
+                    ) : isClient ? (
+                      <button
+                        type="button"
+                        disabled={releaseLoadingId === ms._id}
+                        onClick={() => handleReleasePayment(ms._id)}
+                        className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-xs font-bold text-white hover:from-emerald-500 hover:to-teal-500 disabled:opacity-60 whitespace-nowrap"
+                      >
+                        {releaseLoadingId === ms._id ? "Releasing…" : "Release payment"}
+                      </button>
+                    ) : (
+                      <span className="px-3 py-1.5 rounded-md bg-emerald-500/15 border border-emerald-500/25 text-xs font-bold text-emerald-300">Ready to release</span>
+                    )
+                  ) : st === "cleared" || st === "released" ? (
+                    isFreelancer ? (
+                      <button
+                        type="button"
+                        disabled={withdrawLoadingId === ms._id}
+                        onClick={() => handleWithdraw(ms._id)}
+                        className="px-5 py-2.5 rounded-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-500 hover:to-teal-500 transition-all text-sm whitespace-nowrap shadow-[0_0_18px_rgba(16,185,129,0.25)] disabled:opacity-60"
+                      >
+                        {withdrawLoadingId === ms._id ? "Processing…" : "Withdraw"}
+                      </button>
+                    ) : (
+                      <div className="text-right flex flex-col items-end">
+                        <span className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-xs font-bold text-slate-300 mb-1">Released to freelancer</span>
+                        <p className="text-[10px] text-slate-500 whitespace-nowrap">{new Date(ms.updatedAt || Date.now()).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                      </div>
+                    )
                   ) : (
-                    <button className="px-5 py-2.5 rounded-xl font-bold bg-white/10 text-white hover:bg-white/20 transition-all text-sm whitespace-nowrap">View Activity</button>
+                    <button type="button" className="px-5 py-2.5 rounded-xl font-bold bg-white/10 text-white hover:bg-white/20 transition-all text-sm whitespace-nowrap">View Activity</button>
                   )}
                 </div>
               </div>
-            ))}
+
+              {st === "submitted" && (
+                <div className="px-5 pb-5 pt-0">
+                  <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 sm:p-5">
+                    {isClient ? (
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <p className="text-xs font-bold uppercase tracking-wider text-amber-200/90">Deliverable — review before release</p>
+                          {ms.submissionUrl ? (
+                            <a
+                              href={ms.submissionUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-indigo-300 hover:text-indigo-200 underline break-all"
+                            >
+                              {ms.submissionUrl}
+                            </a>
+                          ) : (
+                            <p className="text-sm text-slate-400">No link provided (refresh if you just submitted).</p>
+                          )}
+                          <p className="text-xs text-slate-500">
+                            Open the proof of work, then release escrow when you accept the milestone.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={releaseLoadingId === ms._id}
+                          onClick={() => handleReleasePayment(ms._id)}
+                          className="shrink-0 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-900/30 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-60"
+                        >
+                          {releaseLoadingId === ms._id ? "Releasing…" : "Release payment"}
+                        </button>
+                      </div>
+                    ) : isFreelancer ? (
+                      <p className="text-sm text-slate-300">
+                        <span className="font-semibold text-amber-200">Client notified.</span> They’ll review your link and release payment from escrow when satisfied.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-slate-400">This milestone is waiting for the client to review and release payment.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              </div>
+              );
+            })}
           </div>
         )}
       </section>

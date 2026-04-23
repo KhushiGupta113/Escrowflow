@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AuthLayout } from "@/components/auth-layout";
@@ -11,6 +11,20 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasAlerted, setHasAlerted] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && !hasAlerted) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("error") === "session_expired") {
+        toast.error("Your session has expired. Please sign in again.", { 
+          id: "session-expired",
+          style: { background: "#6366f1", color: "#fff", border: "none" }
+        });
+        setHasAlerted(true);
+      }
+    }
+  }, [hasAlerted]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
