@@ -13,7 +13,8 @@ import swaggerUi from "swagger-ui-express";
 import { AuditLog, Dispute, Milestone, Notification, Payment, Project, User, Otp } from "./models";
 import { emitToProject, emitToUser } from "./socket";
 import { UserRole } from "./types";
-import { GoogleGenAI } from "@google/genai";
+
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const app = express();
 
@@ -100,39 +101,73 @@ app.get("/health", async (_req, res) => response(res, { status: "healthy" }));
 app.post("/api/generate-brief", async (req, res) => {
   try {
     const { prompt } = z.object({ prompt: z.string().min(5) }).parse(req.body);
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) return res.status(500).json({ success: false, message: "Gemini API key not configured" });
     
-    const ai = new GoogleGenAI({ apiKey });
-    const aiResponse = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: [{
-        role: "user",
-        parts: [{
-          text: `You are an expert escrow project architect. Take the following client prompt and output a perfectly structured Project Brief.
-          Format your response strictly as JSON with exactly these keys:
-          {
-            "title": "A short professional title",
-            "description": "A detailed multi-line markdown string containing '## Project Overview', '## Suggested Milestones (with % breakdown)', and '## Requirements'"
-          }
-          
-          Client Prompt: "${prompt}"
-          
-          Return ONLY valid JSON. No Markdown.`
-        }]
-      }]
-    });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    // Using gemini-flash-latest as it was confirmed to exist in your model list
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
     
-    let text = aiResponse.text || "";
-    if (text.startsWith("\`\`\`json")) text = text.replace("\`\`\`json", "").replace("\`\`\`", "");
-    if (text.startsWith("\`\`\`")) text = text.replace("\`\`\`", "").replace("\`\`\`", "");
-    text = text.trim();
+    const result = await model.generateContent(`You are an expert escrow project architect. Take the following client prompt and output a perfectly structured Project Brief.
+            Format your response strictly as JSON with exactly these keys:
+            {
+              "title": "A short professional title",
+              "description": "A detailed multi-line markdown string containing '## Project Overview', '## Suggested Milestones (with % breakdown)', and '## Requirements'"
+            }
+            
+            Client Prompt: "${prompt}"
+            
+            Return ONLY valid JSON. No Markdown.`);
+
+    const text = result.response.text().trim();
+    let cleanedJson = text;
+    if (cleanedJson.startsWith("\`\`\`json")) cleanedJson = cleanedJson.replace("\`\`\`json", "").replace("\`\`\`", "");
+    if (cleanedJson.startsWith("\`\`\`")) cleanedJson = cleanedJson.replace("\`\`\`", "").replace("\`\`\`", "");
+    cleanedJson = cleanedJson.trim();
     
-    const parsedData = JSON.parse(text);
+    const parsedData = JSON.parse(cleanedJson);
     response(res, parsedData, "Brief generated");
   } catch (error: any) {
     console.error("Gemini Error:", error);
     res.status(500).json({ success: false, message: error.message || "Failed to generate AI brief" });
+  }
+});
+
+app.post("/api/generate-milestone", authRequired("client"), async (req, res) => {
+  try {
+    const { projectTitle, projectDescription, existingMilestones } = z.object({ 
+      projectTitle: z.string(), 
+      projectDescription: z.string(),
+      existingMilestones: z.array(z.string())
+    }).parse(req.body);
+    
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) return res.status(500).json({ success: false, message: "Gemini API key not configured" });
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    
+    const result = await model.generateContent(`You are an expert project manager. Based on the project title "${projectTitle}" and description: "${projectDescription}".
+            The following milestones already exist: ${existingMilestones.join(", ")}.
+            Suggest ONE new professional milestone that would logically come next or fill a gap.
+            Format your response strictly as JSON with exactly these keys:
+            {
+              "title": "A short professional milestone title",
+              "suggestedAmount": "A suggested numeric value in INR (e.g. 5000), make it realistic based on the project scope"
+            }
+            Return ONLY valid JSON. No Markdown.`);
+
+    const text = result.response.text().trim();
+    let cleanedJson = text;
+    if (cleanedJson.startsWith("\`\`\`json")) cleanedJson = cleanedJson.replace("\`\`\`json", "").replace("\`\`\`", "");
+    if (cleanedJson.startsWith("\`\`\`")) cleanedJson = cleanedJson.replace("\`\`\`", "").replace("\`\`\`", "");
+    cleanedJson = cleanedJson.trim();
+    
+    const parsedData = JSON.parse(cleanedJson);
+    response(res, parsedData, "Milestone suggested");
+  } catch (error: any) {
+    console.error("Gemini Error:", error);
+    res.status(500).json({ success: false, message: error.message || "Failed to suggest milestone" });
   }
 });
 
@@ -500,6 +535,27 @@ app.post("/api/admin/disputes/:id/resolve", authRequired("admin"), async (req, r
 app.get("/api/notifications", authRequired(), async (req: AuthReq, res) => {
   const list = await Notification.find({ userId: req.user!.id }).sort({ createdAt: -1 }).limit(50);
   response(res, list);
+});
+
+app.get("/api/users/profile", authRequired(), async (req: AuthReq, res) => {
+  const user = await User.findById(req.user!.id);
+  if (!user) return res.status(404).json({ success: false, message: "User not found" });
+  response(res, user);
+});
+
+app.patch("/api/users/profile", authRequired(), async (req: AuthReq, res) => {
+  const schema = z.object({
+    name: z.string().min(2).optional(),
+    bio: z.string().optional(),
+    avatar: z.string().optional()
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.message });
+  
+  const user = await User.findByIdAndUpdate(req.user!.id, { $set: parsed.data }, { new: true });
+  if (!user) return res.status(404).json({ success: false, message: "User not found" });
+  
+  response(res, user, "Profile updated");
 });
 
 app.get("/api/dashboard/summary", authRequired(), async (req: AuthReq, res) => {

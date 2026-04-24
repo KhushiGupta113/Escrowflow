@@ -38,6 +38,7 @@ export default function ProjectDetailsPage() {
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
   const [newMilestone, setNewMilestone] = useState({ title: "", amount: "" });
   const [isCreating, setIsCreating] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
 
   const [submitModal, setSubmitModal] = useState<{isOpen: boolean, milestoneId: string}>({ isOpen: false, milestoneId: "" });
   const [submissionUrl, setSubmissionUrl] = useState("");
@@ -158,6 +159,28 @@ export default function ProjectDetailsPage() {
       toast.error(e.message || "Failed to add milestone");
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleSuggestMilestone = async () => {
+    if (!project) return;
+    setIsSuggesting(true);
+    try {
+      const existing = milestones.map(m => m.title);
+      const res = await api<{ title: string, suggestedAmount: string }>("/api/generate-milestone", {
+        method: "POST",
+        body: JSON.stringify({
+          projectTitle: project.title,
+          projectDescription: project.description,
+          existingMilestones: existing
+        })
+      });
+      setNewMilestone({ title: res.title, amount: res.suggestedAmount });
+      toast.success("AI suggested a logical next milestone!");
+    } catch (e: any) {
+      toast.error(e.message || "AI failed to suggest a milestone.");
+    } finally {
+      setIsSuggesting(false);
     }
   };
 
@@ -423,6 +446,26 @@ export default function ProjectDetailsPage() {
                 <h3 className="text-xl font-bold text-white">Construct Milestone</h3>
                 <button onClick={() => setShowMilestoneForm(false)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-full text-slate-400 transition">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <button 
+                  onClick={handleSuggestMilestone}
+                  disabled={isSuggesting}
+                  className="w-full py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-sm font-bold flex items-center justify-center gap-2 hover:bg-indigo-500/20 transition-all disabled:opacity-50"
+                >
+                  {isSuggesting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                      Thinking...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                      AI Suggest Next Milestone
+                    </>
+                  )}
                 </button>
               </div>
 
