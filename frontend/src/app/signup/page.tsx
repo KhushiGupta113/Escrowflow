@@ -3,155 +3,154 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AuthLayout } from "@/components/auth-layout";
 import { api } from "@/lib/api";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 
 export default function SignupPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("client");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "client",
+    otp: ""
+  });
   const [loading, setLoading] = useState(false);
-  const [sendingOtp, setSendingOtp] = useState(false);
 
-  const handleSendOtp = async () => {
-    if (!email) return toast.error("Please enter your email first");
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.email || !formData.password) {
+      toast.error("Please fill all fields");
+      return;
+    }
     try {
-      setSendingOtp(true);
-      await api("/api/auth/otp/send", {
-        method: "POST",
-        body: JSON.stringify({ email, type: "signup" })
-      });
-      setOtpSent(true);
-      toast.success("OTP sent to your email!", {
-        style: { background: "#10b981", color: "#fff", border: "none" }
-      });
+      setLoading(true);
+      await api.post("/api/auth/otp/send", { email: formData.email, type: "signup" });
+      toast.success("OTP sent to your email!");
+      setStep(2);
     } catch (error: any) {
-      toast.error(error.message || "Failed to send OTP", {
-        style: { background: "#ef4444", color: "#fff", border: "none" }
-      });
+      toast.error(error.message || "Failed to send OTP");
     } finally {
-      setSendingOtp(false);
+      setLoading(false);
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleVerifySignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otpSent) return toast.error("Please send and verify OTP first");
-    
+    if (!formData.otp) return;
     try {
       setLoading(true);
-      await api("/api/auth/signup", {
-        method: "POST",
-        body: JSON.stringify({ name, email, password, role, otp })
-      });
-      toast.success("Account created! Please log in.", {
-        style: { background: "#10b981", color: "#fff", border: "none" }
-      });
+      await api.post("/api/auth/signup", formData);
+      toast.success("Account created successfully!");
       router.push("/login");
     } catch (error: any) {
-      toast.error(error.message || "Failed to sign up", {
-        style: { background: "#ef4444", color: "#fff", border: "none" }
-      });
+      toast.error(error.message || "Failed to create account");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthLayout title="Create Account" subtitle="Join the premier freelance escrow marketplace">
-      <form onSubmit={handleSignup} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-slate-300 ml-1">Full name</label>
-          <input 
-            className="input-glass rounded-xl p-3.5" 
-            placeholder="John Doe" 
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-        
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-slate-300 ml-1">Email address</label>
-          <div className="flex gap-2">
-            <input 
-              className="input-glass flex-1 rounded-xl p-3.5" 
-              placeholder="name@company.com" 
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <button 
-              type="button"
-              onClick={handleSendOtp}
-              disabled={sendingOtp || otpSent}
-              className="btn-primary rounded-xl px-4 text-xs font-bold whitespace-nowrap disabled:opacity-50"
-            >
-              {sendingOtp ? "Sending..." : otpSent ? "Resend?" : "Send OTP"}
-            </button>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md relative z-10">
+        <GlassCard className="p-8" glow="violet">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold mb-2">Create Account</h1>
+            <p className="text-[var(--text-secondary)]">Join EscrowFlow today</p>
           </div>
-        </div>
 
-        {otpSent && (
-          <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
-            <label className="text-sm font-medium text-indigo-300 ml-1">Verify OTP</label>
-            <input 
-              className="input-glass rounded-xl p-3.5 border-indigo-500/40" 
-              placeholder="6-digit code" 
-              required
-              maxLength={6}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-            />
-          </div>
-        )}
-        
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-slate-300 ml-1">Password</label>
-          <input 
-            className="input-glass rounded-xl p-3.5" 
-            placeholder="••••••••" 
-            type="password" 
-            minLength={8}
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-slate-300 ml-1">I want to join as a</label>
-          <select 
-            className="input-glass rounded-xl p-3.5 text-slate-100 [&>option]:text-slate-900 appearance-none cursor-pointer"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-          >
-            <option value="client">Client (Hire talent)</option>
-            <option value="freelancer">Freelancer (Find work)</option>
-            <option value="admin">Platform Admin</option>
-          </select>
-        </div>
-        
-        <button 
-          type="submit" 
-          disabled={loading || !otpSent}
-          className="btn-primary mt-4 rounded-xl px-4 py-3.5 font-bold tracking-wide disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          {loading ? "Creating account..." : "Complete Signup"}
-        </button>
-        
-        <p className="text-center text-sm text-slate-400 mt-2">
-          Already have an account?{" "}
-          <a href="/login" className="font-semibold text-white hover:text-indigo-400 hover:underline transition-colors">
-            Sign in here
-          </a>
-        </p>
-      </form>
-    </AuthLayout>
+          {step === 1 ? (
+            <form onSubmit={handleSendOtp} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-[var(--text-secondary)] ml-1">Full Name</label>
+                <Input 
+                  placeholder="John Doe" 
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-[var(--text-secondary)] ml-1">Email address</label>
+                <Input 
+                  placeholder="name@company.com" 
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-[var(--text-secondary)] ml-1">Password</label>
+                <Input 
+                  placeholder="••••••••" 
+                  type="password" 
+                  minLength={8}
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-1.5 mb-2">
+                <label className="text-sm font-medium text-[var(--text-secondary)] ml-1">I am a...</label>
+                <select 
+                  className="w-full px-4 py-3 rounded-xl bg-[#0d1526] border border-white/[0.08] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] focus:shadow-[0_0_0_3px_rgba(79,142,247,0.15)] transition-all"
+                  value={formData.role}
+                  onChange={(e) => setFormData({...formData, role: e.target.value})}
+                >
+                  <option value="client">Client (Hiring)</option>
+                  <option value="freelancer">Freelancer (Working)</option>
+                </select>
+              </div>
+
+              <Button type="submit" isLoading={loading} className="w-full">
+                Continue
+              </Button>
+
+              <p className="text-center text-sm text-[var(--text-secondary)] mt-2">
+                Already have an account?{" "}
+                <a href="/login" className="font-semibold text-[var(--text-primary)] hover:text-[var(--accent-primary)] hover:underline transition-colors">
+                  Sign in
+                </a>
+              </p>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifySignup} className="flex flex-col gap-4">
+              <div className="text-center mb-4">
+                <p className="text-sm text-[var(--text-secondary)]">We sent a 6-digit code to</p>
+                <p className="font-medium">{formData.email}</p>
+              </div>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-[var(--text-secondary)] ml-1">Verification Code</label>
+                <Input 
+                  placeholder="123456" 
+                  maxLength={6}
+                  value={formData.otp}
+                  onChange={(e) => setFormData({...formData, otp: e.target.value})}
+                  required
+                  className="text-center text-2xl tracking-[0.5em]"
+                />
+              </div>
+
+              <Button type="submit" isLoading={loading} className="w-full mt-4">
+                Create Account
+              </Button>
+              
+              <button 
+                type="button"
+                onClick={() => setStep(1)}
+                className="text-sm text-[var(--text-secondary)] hover:text-white transition-colors mt-2"
+              >
+                Back
+              </button>
+            </form>
+          )}
+        </GlassCard>
+      </div>
+    </div>
   );
 }
