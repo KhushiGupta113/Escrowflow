@@ -54,7 +54,8 @@ const VaultModel = ({ isUnlocked, onVaultClick }: { isUnlocked: boolean; onVault
   const { viewport } = useThree();
   const isMobile = viewport.width < 5;
   const targetScale = isMobile ? 0.6 : 0.85;
-  const targetX = isMobile ? 0 : viewport.width > 12 ? 2.8 : 2.0;
+  const targetX = isMobile ? 0 : viewport.width > 12 ? 3.2 : 2.4;
+
   const targetY = isMobile ? -2 : -0.5;
 
   useFrame((state, delta) => {
@@ -64,6 +65,7 @@ const VaultModel = ({ isUnlocked, onVaultClick }: { isUnlocked: boolean; onVault
     vaultRef.current.position.x = THREE.MathUtils.lerp(vaultRef.current.position.x, targetX, 4 * delta);
     vaultRef.current.position.y = THREE.MathUtils.lerp(vaultRef.current.position.y, targetY, 4 * delta);
     vaultRef.current.scale.setScalar(THREE.MathUtils.lerp(vaultRef.current.scale.x, targetScale, 4 * delta));
+
     
     // Orbiting Nodes
     if (orbitRef.current) {
@@ -189,10 +191,11 @@ const VaultModel = ({ isUnlocked, onVaultClick }: { isUnlocked: boolean; onVault
 
       {/* Holographic UI Nodes Orbiting */}
       <group ref={orbitRef}>
-        <FloatingNode position={[-3.2, 0.5, 0]} label="Client Network" icon={User} color="#7c3aed" delay={1.2} />
-        <FloatingNode position={[1.6, 1.2, 2.8]} label="Milestone Verified" icon={CheckCircle} color="#06b6d4" delay={1.4} />
-        <FloatingNode position={[1.6, -1.2, -2.8]} label="Funds Released" icon={Shield} color="#4f8ef7" delay={1.6} />
+        <FloatingNode position={[-4.0, 0.8, 0]} label="Client Network" icon={User} color="#7c3aed" delay={1.2} />
+        <FloatingNode position={[1.8, 1.5, 3.2]} label="Milestone Verified" icon={CheckCircle} color="#06b6d4" delay={1.4} />
+        <FloatingNode position={[1.8, -1.5, -3.2]} label="Funds Released" icon={Shield} color="#4f8ef7" delay={1.6} />
       </group>
+
     </group>
   );
 };
@@ -307,17 +310,19 @@ export function VaultHero() {
       />
 
       {/* Foreground Content */}
-      <div className="container relative z-20 mx-auto px-6 lg:px-8 pointer-events-none">
+      <div className="max-w-7xl relative z-20 mx-auto px-6 lg:px-8 pointer-events-none w-full">
+
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="flex flex-col gap-8 max-w-xl">
              <motion.div 
                initial={{ opacity: 0, y: 10 }}
                animate={{ opacity: 1, y: 0 }}
-               className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/[0.03] border border-white/10 w-fit backdrop-blur-md"
+               className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/[0.03] border border-white/10 w-fit backdrop-blur-md -ml-1"
              >
                <Shield className="w-3.5 h-3.5 text-[#4f8ef7]" />
                <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-white/80">Autonomous Escrow Protocol</span>
              </motion.div>
+
              
              <motion.h1 
                initial={{ opacity: 0, y: 20 }}
