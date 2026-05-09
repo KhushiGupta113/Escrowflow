@@ -220,7 +220,8 @@ const Particles = ({ count = 150 }) => {
   return (
     <points ref={ref}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={points.length / 3} array={points} itemSize={3} />
+        <bufferAttribute attach="attributes-position" count={points.length / 3} array={points} itemSize={3} args={[points, 3]} />
+
       </bufferGeometry>
       <pointsMaterial size={0.05} color="#4f8ef7" transparent opacity={0.3} blending={THREE.AdditiveBlending} depthWrite={false} />
     </points>
