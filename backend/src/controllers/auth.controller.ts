@@ -64,7 +64,7 @@ export const login = async (req: Request, res: Response) => {
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
   });
 
-  res.cookie("refreshToken", refreshTokenString, { httpOnly: true, sameSite: "lax", secure: false, path: "/api/auth" });
+  res.cookie("refreshToken", refreshTokenString, { httpOnly: true, sameSite: "lax", secure: false, path: "/" });
   res.json(new ApiResponse(200, { accessToken, user: { id: user._id, role: user.role, name: user.name, email: user.email } }));
 };
 
@@ -86,11 +86,14 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
 export const refresh = async (req: Request, res: Response) => {
   const token = req.cookies.refreshToken as string | undefined;
-  if (!token) throw new ApiError(401, "Missing refresh token");
+  if (!token) {
+    console.log("Cookies received:", req.cookies);
+    throw new ApiError(401, "Missing refresh token");
+  }
 
   const storedToken = await RefreshToken.findOne({ token, revoked: false, expiresAt: { $gt: new Date() } });
   if (!storedToken) {
-    res.clearCookie("refreshToken", { path: "/api/auth" });
+    res.clearCookie("refreshToken", { path: "/" });
     throw new ApiError(401, "Invalid or expired refresh token");
   }
 
@@ -110,7 +113,7 @@ export const refresh = async (req: Request, res: Response) => {
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   });
 
-  res.cookie("refreshToken", newRefreshTokenString, { httpOnly: true, sameSite: "lax", secure: false, path: "/api/auth" });
+  res.cookie("refreshToken", newRefreshTokenString, { httpOnly: true, sameSite: "lax", secure: false, path: "/" });
   res.json(new ApiResponse(200, { accessToken }));
 };
 
@@ -119,6 +122,6 @@ export const logout = async (req: Request, res: Response) => {
   if (token) {
     await RefreshToken.updateOne({ token }, { revoked: true });
   }
-  res.clearCookie("refreshToken", { path: "/api/auth" });
+  res.clearCookie("refreshToken", { path: "/" });
   res.json(new ApiResponse(200, null, "Logged out successfully"));
 };

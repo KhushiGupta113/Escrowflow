@@ -29,6 +29,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const { data } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      if (!token) return [];
+      
       try {
         const res: any = await api.get("/api/notifications");
         return res.notifications || [];
@@ -36,7 +39,8 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         return [];
       }
     },
-    refetchInterval: 60000 // Refetch every minute as fallback
+    refetchInterval: 60000,
+    enabled: typeof window !== "undefined" && !!localStorage.getItem("accessToken")
   });
 
   const notifications: Notification[] = data || [];

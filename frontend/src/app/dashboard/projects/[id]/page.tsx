@@ -28,11 +28,14 @@ export default function ProjectDetailsPage() {
   const [tempMilestone, setTempMilestone] = useState<any>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     if (token) {
       try {
-        setRole(JSON.parse(atob(token.split('.')[1])).role);
-      } catch (e) {}
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setRole(payload.role);
+      } catch (e) {
+        console.error("Failed to parse token role", e);
+      }
     }
 
     const fetchProject = async () => {
@@ -121,25 +124,25 @@ export default function ProjectDetailsPage() {
     }
   };
 
-  const handleFund = async () => {
+  const handleFund = async (milestoneId: string) => {
     try {
       setFunding(true);
-      const res = await api.post(`/api/escrow/fund/${params.id}`) as any;
+      const res = await api.post(`/api/escrow/fund/${milestoneId}`) as any;
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: res.amount,
+        amount: res.order.amount,
         currency: "INR",
         name: "EscrowFlow",
-        description: `Funding for ${project.title}`,
-        order_id: res.orderId,
+        description: `Funding for milestone`,
+        order_id: res.order.id,
         handler: async function (response: any) {
           try {
-            await api.post(`/api/escrow/verify/${params.id}`, {
+            await api.post(`/api/escrow/verify`, {
               razorpayPaymentId: response.razorpay_payment_id,
               razorpayOrderId: response.razorpay_order_id,
               razorpaySignature: response.razorpay_signature
             });
-            toast.success("Project funded successfully!");
+            toast.success("Milestone funded successfully!");
             window.location.reload();
           } catch (e) {
             toast.error("Verification failed");

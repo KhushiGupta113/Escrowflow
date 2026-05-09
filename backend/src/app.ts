@@ -12,13 +12,18 @@ const app = express();
 
 app.use(helmet());
 
-const allowedOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:3000").split(",");
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  ...(process.env.CORS_ORIGIN ?? "").split(",")
+].filter(Boolean);
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || origin.includes("vercel.app")) {
+    if (!origin || allowedOrigins.some(o => origin === o || origin.includes("vercel.app"))) {
       callback(null, true);
     } else {
-      callback(new Error("Not allowed by CORS"));
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
     }
   },
   credentials: true
