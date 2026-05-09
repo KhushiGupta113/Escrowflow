@@ -280,7 +280,8 @@ export function VaultHero() {
           
           <ContactShadows position={[0, -3.5, 0]} opacity={0.8} scale={30} blur={2.5} far={10} color="#000" />
 
-          <EffectComposer disableNormalPass multisampling={4}>
+          <EffectComposer enableNormalPass={false} multisampling={4}>
+
             <Bloom intensity={0.8} luminanceThreshold={0.9} luminanceSmoothing={0.1} mipmapBlur />
             <Vignette darkness={0.6} offset={0.1} />
             <Noise opacity={0.025} />
