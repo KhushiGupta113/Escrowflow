@@ -214,8 +214,11 @@ export default function ProjectDetailsPage() {
       details: s.details,
       description: actual ? actual.description : "",
       status: actual ? actual.status : "pending",
-      isActual: !!actual
+      isActual: !!actual,
+      feedback: actual ? actual.feedback : "",
+      submissionUrl: actual ? actual.submissionUrl : ""
     };
+
 
   });
   
@@ -230,8 +233,11 @@ export default function ProjectDetailsPage() {
         details: [],
         description: actual.description || "No details provided",
         status: actual.status,
-        isActual: true
+        isActual: true,
+        feedback: actual.feedback || "",
+        submissionUrl: actual.submissionUrl || ""
       });
+
 
     }
   }
@@ -246,8 +252,11 @@ export default function ProjectDetailsPage() {
         details: ["Complete all project requirements."],
         description: "Complete all project requirements.",
         status: "pending",
-        isActual: false
+        isActual: false,
+        feedback: "",
+        submissionUrl: ""
      });
+
 
   }
 
