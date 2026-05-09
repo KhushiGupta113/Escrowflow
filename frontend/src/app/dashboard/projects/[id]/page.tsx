@@ -212,9 +212,11 @@ export default function ProjectDetailsPage() {
       allocation: s.allocation,
       amount: actual ? actual.amount : (project.budget * parseInt(s.allocation) / 100),
       details: s.details,
+      description: actual ? actual.description : "",
       status: actual ? actual.status : "pending",
       isActual: !!actual
     };
+
   });
   
   if (milestones.length > suggested.length) {
@@ -225,10 +227,12 @@ export default function ProjectDetailsPage() {
         title: actual.title,
         allocation: ((actual.amount / project.budget) * 100).toFixed(0),
         amount: actual.amount,
-        details: [actual.description || "No details provided"],
+        details: [],
+        description: actual.description || "No details provided",
         status: actual.status,
         isActual: true
       });
+
     }
   }
 
@@ -240,9 +244,11 @@ export default function ProjectDetailsPage() {
         allocation: "100",
         amount: project.budget,
         details: ["Complete all project requirements."],
+        description: "Complete all project requirements.",
         status: "pending",
         isActual: false
      });
+
   }
 
   const getStatusIcon = (status: string) => {
