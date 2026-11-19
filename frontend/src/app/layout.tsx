@@ -19,6 +19,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} antialiased h-full`}>
+      <head>
+        <link rel="stylesheet" href="https://db.onlinewebfonts.com/c/04e6981992c0e2e7642af2074ebe3901?family=Helvetica+Now+Display+Bold" type="text/css" />
+      </head>
       <body className="min-h-full flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)]">
         <VisualEffects />
         <Providers>{children}</Providers>

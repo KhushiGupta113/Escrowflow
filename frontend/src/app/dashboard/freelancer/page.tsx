@@ -1,15 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Briefcase, Wallet, CreditCard, Download, ArrowRight, Calendar, Plus, CheckCircle2, Clock, CheckSquare } from "lucide-react";
+import { Briefcase, Wallet, CreditCard, Download, ArrowRight, Calendar, Plus, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
-const CustomStatCard = ({ icon: Icon, title, value, badgeText, badgeColor, iconColor, chartColor }: any) => (
+interface StatCardProps {
+  icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
+  title: string;
+  value: string;
+  badgeText: string;
+  badgeColor: string;
+  iconColor: string;
+  chartColor: string;
+}
+
+const CustomStatCard = ({ icon: Icon, title, value, badgeText, badgeColor, iconColor, chartColor }: StatCardProps) => (
   <GlassCard className="p-6 flex flex-col justify-between relative overflow-hidden group border border-white/[0.05] bg-[#0a0e17]/80">
     <div className="flex items-center gap-3 mb-6 relative z-10">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center`} style={{ backgroundColor: `${iconColor}15` }}>
@@ -38,15 +48,26 @@ const CustomStatCard = ({ icon: Icon, title, value, badgeText, badgeColor, iconC
   </GlassCard>
 );
 
+interface MarketplaceProject {
+  _id: string;
+  title: string;
+  description: string;
+  budget?: number;
+}
+
+interface UserProfile {
+  name: string;
+}
+
 export default function FreelancerDashboard() {
-  const [marketplaceProjects, setMarketplaceProjects] = useState<any[]>([]);
+  const [marketplaceProjects, setMarketplaceProjects] = useState<MarketplaceProject[]>([]);
   const [user, setUser] = useState({ name: "Freelancer" });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      api.get<any[]>("/api/marketplace").catch(() => []),
-      api.get<any>("/api/users/profile").catch(() => null)
+      api.get<MarketplaceProject[]>("/api/marketplace").catch(() => []),
+      api.get<UserProfile>("/api/users/profile").catch(() => null)
     ]).then(([market, profile]) => {
       setMarketplaceProjects(market || []);
       if (profile && profile.name) setUser({ name: profile.name });
@@ -59,8 +80,8 @@ export default function FreelancerDashboard() {
       await api.post(`/api/projects/${id}/apply`);
       toast.success("Successfully applied for project!");
       setMarketplaceProjects(prev => prev.filter(p => p._id !== id));
-    } catch (e: any) {
-      toast.error(e.message || "Failed to apply");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to apply");
     }
   };
 

@@ -48,15 +48,15 @@ export default function ProjectsPage() {
       try {
         const res = await api.get<{ data: Project[] }>("/api/projects");
         // Check if data is nested or direct
-        const projectsData = (res as any).data || res;
+        const projectsData = (res as { data?: Project[] }).data || res as unknown as Project[];
         if (Array.isArray(projectsData)) {
           setProjects(projectsData);
         } else {
           console.error("Unexpected response format:", res);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
-        setError(err.message || "Failed to load projects");
+        setError((err as Error).message || "Failed to load projects");
       } finally {
         setLoading(false);
       }
@@ -64,7 +64,13 @@ export default function ProjectsPage() {
     fetchProjects();
   }, []);
 
-  const stats = useMemo(() => {
+  const stats: Array<{
+    label: string;
+    value: number | string;
+    icon: typeof Briefcase;
+    color: string;
+    glow: "blue" | "violet" | "emerald" | "none";
+  }> = useMemo(() => {
     const total = projects.length;
     const inProgress = projects.filter(p => p.status === "in_progress").length;
     const completed = projects.filter(p => p.status === "completed").length;
@@ -168,7 +174,7 @@ export default function ProjectsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 * idx }}
           >
-            <GlassCard glow={stat.glow as any} className="p-5 flex items-center gap-4 border-white/5 h-full">
+            <GlassCard glow={stat.glow} className="p-5 flex items-center gap-4 border-white/5 h-full">
               <div className={`p-3 rounded-xl bg-white/5 text-white/80 group-hover:bg-white/10 transition-colors`}>
                 <stat.icon className="w-6 h-6" style={{ color: `var(--accent-${stat.color === 'blue' ? 'primary' : stat.color === 'emerald' ? 'success' : stat.color === 'indigo' ? 'primary' : 'secondary'})` }} />
               </div>

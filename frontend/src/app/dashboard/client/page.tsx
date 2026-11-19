@@ -11,18 +11,36 @@ import { Button } from "@/components/ui/Button";
 import { ShieldCheck } from "lucide-react";
 import { AIDrafter } from "@/components/ui/AIDrafter";
 
+interface DashboardSummary {
+  activeProjects: number;
+  escrowBalance: number;
+  pendingApprovals: number;
+}
+
+interface Project {
+  _id: string;
+  title: string;
+  description: string;
+  budget?: number;
+  status: string;
+}
+
+interface UserProfile {
+  name: string;
+}
+
 export default function ClientDashboard() {
   const router = useRouter();
-  const [summary, setSummary] = useState({ activeProjects: 0, escrowBalance: 0, pendingApprovals: 0 });
-  const [projects, setProjects] = useState<any[]>([]);
+  const [summary, setSummary] = useState<DashboardSummary>({ activeProjects: 0, escrowBalance: 0, pendingApprovals: 0 });
+  const [projects, setProjects] = useState<Project[]>([]);
   const [user, setUser] = useState({ name: "Client" });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      api.get<any>("/api/dashboard/summary").catch(() => null),
-      api.get<any[]>("/api/projects").catch(() => []),
-      api.get<any>("/api/users/profile").catch(() => null)
+      api.get<DashboardSummary>("/api/dashboard/summary").catch(() => null),
+      api.get<Project[]>("/api/projects").catch(() => []),
+      api.get<UserProfile>("/api/users/profile").catch(() => null)
     ]).then(([sum, proj, profile]) => {
       if (sum) setSummary({ activeProjects: sum.activeProjects || 0, escrowBalance: sum.escrowBalance || 0, pendingApprovals: sum.pendingApprovals || 0 });
       if (proj) setProjects(proj);
@@ -38,7 +56,7 @@ export default function ClientDashboard() {
           <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
             Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent-primary)] to-[#7c3aed]">{user.name.split(' ')[0]}</span> 👋
           </h1>
-          <p className="text-[var(--text-secondary)]">Here is what's happening with your escrow projects today.</p>
+          <p className="text-[var(--text-secondary)]">Here is what&apos;s happening with your escrow projects today.</p>
         </div>
         <div className="flex gap-3">
           <Button variant="secondary" className="px-5">View Reports</Button>

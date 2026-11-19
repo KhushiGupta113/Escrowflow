@@ -71,7 +71,7 @@ export function NotificationBell() {
                     <div className="w-16 h-16 rounded-full bg-white/[0.03] flex items-center justify-center mb-6">
                       <Bell size={28} className="text-[var(--text-muted)]" />
                     </div>
-                    <h4 className="text-lg font-bold text-white mb-2">You're all caught up!</h4>
+                    <h4 className="text-lg font-bold text-white mb-2">You&apos;re all caught up!</h4>
                     <p className="text-sm text-[var(--text-secondary)]">
                       Check back later for updates on your escrow transactions.
                     </p>

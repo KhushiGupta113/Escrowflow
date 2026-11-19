@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect } from "react";
 import { api } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -33,9 +33,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       if (!token) return [];
       
       try {
-        const res: any = await api.get("/api/notifications");
+        const res = await api.get<{ notifications?: Notification[] }>("/api/notifications");
         return res.notifications || [];
-      } catch (e) {
+      } catch {
         return [];
       }
     },

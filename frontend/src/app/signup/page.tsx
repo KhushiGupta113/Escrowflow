@@ -31,8 +31,8 @@ export default function SignupPage() {
       await api.post("/api/auth/otp/send", { email: formData.email, type: "signup" });
       toast.success("OTP sent to your email!");
       setStep(2);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to send OTP");
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Failed to send OTP");
     } finally {
       setLoading(false);
     }
@@ -46,8 +46,8 @@ export default function SignupPage() {
       await api.post("/api/auth/signup", formData);
       toast.success("Account created successfully!");
       router.push("/login");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create account");
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Failed to create account");
     } finally {
       setLoading(false);
     }

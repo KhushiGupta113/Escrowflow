@@ -7,14 +7,70 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { toast } from "sonner";
-import { ArrowLeft, ShieldCheck, Zap, Lock, Clock, Plus, X, Calendar, Wallet, ChevronRight, Activity, Edit2, Save } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Zap, Lock, Clock, Plus, Activity, Edit2, Save } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+interface Project {
+  _id: string;
+  title: string;
+  description: string;
+  budget: number;
+  status: string;
+  category?: string;
+  createdAt: string;
+}
+
+interface Milestone {
+  _id: string;
+  title: string;
+  amount: number;
+  description?: string;
+  status: string;
+  feedback?: string;
+  submissionUrl?: string;
+}
+
+interface SuggestedMilestone {
+  title: string;
+  allocation: string;
+  details: string[];
+}
+
+interface CombinedMilestone {
+  id: string;
+  title: string;
+  allocation: string;
+  amount: number;
+  details: string[];
+  description?: string;
+  status: string;
+  isActual: boolean;
+  feedback?: string;
+  submissionUrl?: string;
+}
+
+interface RazorpayResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayOptions {
+  key: string | undefined;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (response: RazorpayResponse) => Promise<void>;
+  theme: { color: string };
+}
 
 export default function ProjectDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const [project, setProject] = useState<any>(null);
-  const [milestones, setMilestones] = useState<any[]>([]);
+  const [project, setProject] = useState<Project | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
   const [funding, setFunding] = useState(false);
   const [role, setRole] = useState("client");
@@ -25,7 +81,7 @@ export default function ProjectDetailsPage() {
   const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [tempDesc, setTempDesc] = useState("");
   const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
-  const [tempMilestone, setTempMilestone] = useState<any>(null);
+  const [tempMilestone, setTempMilestone] = useState<{ title: string; amount: number; description?: string } | null>(null);
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
@@ -40,12 +96,12 @@ export default function ProjectDetailsPage() {
 
     const fetchProject = async () => {
       try {
-        const data = await api.get<any>(`/api/projects/${params.id}`);
+        const data = await api.get<{ project: Project; milestones: Milestone[] }>(`/api/projects/${params.id}`);
         setProject(data.project);
         setMilestones(data.milestones || []);
         setTempDesc(data.project.description);
-      } catch (e: any) {
-        toast.error(e.message || "Failed to load project details");
+      } catch (e: unknown) {
+        toast.error((e as Error).message || "Failed to load project details");
       } finally {
         setLoading(false);
       }
@@ -53,7 +109,7 @@ export default function ProjectDetailsPage() {
     if (params.id) fetchProject();
   }, [params.id]);
 
-  const parseSuggestedMilestones = (description: string) => {
+  const parseSuggestedMilestones = (description: string): { overview: string; suggested: SuggestedMilestone[] } => {
     if (!description) return { overview: "", suggested: [] };
     
     let overview = "";
@@ -64,7 +120,7 @@ export default function ProjectDetailsPage() {
       overview = description.split("##")[0].replace(/[#*]/g, "").trim();
     }
 
-    const suggested: any[] = [];
+    const suggested: SuggestedMilestone[] = [];
     const milestoneRegex = /\*\*Milestone \d+:?\s*([^(]+?)\s*(?:\((\d+)%\))?\*\*/gi;
     let match;
     const milestoneIndices: number[] = [];
@@ -97,18 +153,19 @@ export default function ProjectDetailsPage() {
   };
 
   const handleUpdateProject = async () => {
+    if (!project) return;
     try {
       await api.patch(`/api/projects/${params.id}`, { description: tempDesc });
       setProject({ ...project, description: tempDesc });
       setIsEditingDesc(false);
       toast.success("Project details updated and freelancer notified");
-    } catch (e: any) {
-      toast.error(e.message || "Update failed");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Update failed");
     }
   };
 
   const handleUpdateMilestone = async () => {
-    if (!editingMilestoneId) return;
+    if (!editingMilestoneId || !tempMilestone) return;
     try {
       await api.patch(`/api/milestones/${editingMilestoneId}`, {
         title: tempMilestone.title,
@@ -117,25 +174,25 @@ export default function ProjectDetailsPage() {
       });
       toast.success("Milestone updated and freelancer notified");
       setEditingMilestoneId(null);
-      const data = await api.get<any>(`/api/projects/${params.id}`);
+      const data = await api.get<{ milestones: Milestone[] }>(`/api/projects/${params.id}`);
       setMilestones(data.milestones || []);
-    } catch (e: any) {
-      toast.error(e.message || "Update failed");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Update failed");
     }
   };
 
   const handleFund = async (milestoneId: string) => {
     try {
       setFunding(true);
-      const res = await api.post(`/api/escrow/fund/${milestoneId}`) as any;
-      const options = {
+      const res = await api.post<{ order: { id: string; amount: number } }>(`/api/escrow/fund/${milestoneId}`);
+      const options: RazorpayOptions = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: res.order.amount,
         currency: "INR",
         name: "EscrowFlow",
         description: `Funding for milestone`,
         order_id: res.order.id,
-        handler: async function (response: any) {
+        handler: async function (response: RazorpayResponse) {
           try {
             await api.post(`/api/escrow/verify`, {
               razorpayPaymentId: response.razorpay_payment_id,
@@ -144,16 +201,17 @@ export default function ProjectDetailsPage() {
             });
             toast.success("Milestone funded successfully!");
             window.location.reload();
-          } catch (e) {
+          } catch {
             toast.error("Verification failed");
           }
         },
         theme: { color: "#4f8ef7" }
       };
-      const rzp = new (window as any).Razorpay(options);
+      const RazorpayConstructor = (window as unknown as { Razorpay: new (options: RazorpayOptions) => { open: () => void } }).Razorpay;
+      const rzp = new RazorpayConstructor(options);
       rzp.open();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to initiate funding");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to initiate funding");
     } finally {
       setFunding(false);
     }
@@ -166,10 +224,10 @@ export default function ProjectDetailsPage() {
       toast.success("Milestone added");
       setShowAddMilestone(false);
       setNewMilestone({ title: "", amount: 0, description: "" });
-      const data = await api.get<any>(`/api/projects/${params.id}`);
+      const data = await api.get<{ milestones: Milestone[] }>(`/api/projects/${params.id}`);
       setMilestones(data.milestones || []);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to add milestone");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to add milestone");
     }
   };
 
@@ -187,11 +245,11 @@ export default function ProjectDetailsPage() {
         await api.post(`/api/milestones/${milestoneId}/reject`, { feedback: data });
       }
       toast.success(`Milestone ${action}ed`);
-      const res = await api.get<any>(`/api/projects/${params.id}`);
+      const res = await api.get<{ project: Project; milestones: Milestone[] }>(`/api/projects/${params.id}`);
       setProject(res.project);
       setMilestones(res.milestones || []);
-    } catch (e: any) {
-      toast.error(e.message || "Action failed");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Action failed");
     }
   };
 
@@ -207,7 +265,7 @@ export default function ProjectDetailsPage() {
   const fundedAmount = milestones.reduce((sum, m) => m.status === "funded" || m.status === "submitted" || m.status === "approved" || m.status === "released" ? sum + m.amount : sum, 0);
 
   // Combine suggested and actual milestones
-  const combinedMilestones = suggested.map((s, i) => {
+  const combinedMilestones: CombinedMilestone[] = suggested.map((s, i) => {
     const actual = milestones[i];
     return {
       id: actual ? actual._id : `sugg-${i}`,
@@ -417,8 +475,8 @@ export default function ProjectDetailsPage() {
                         {editingMilestoneId === m.id ? (
                           <input 
                             className="text-sm font-bold bg-[#0B101B] border border-[#1F2937] rounded px-2 py-1 text-white focus:border-blue-500 outline-none w-full mr-4"
-                            value={tempMilestone.title}
-                            onChange={(e) => setTempMilestone({ ...tempMilestone, title: e.target.value })}
+                            value={tempMilestone?.title || ""}
+                            onChange={(e) => setTempMilestone(tempMilestone ? { ...tempMilestone, title: e.target.value } : null)}
                           />
                         ) : (
                           <h3 className="text-sm font-bold text-white">{m.title}</h3>
@@ -446,16 +504,16 @@ export default function ProjectDetailsPage() {
                             <input 
                               type="number"
                               className="w-full bg-[#0B101B] border border-[#1F2937] rounded px-3 py-2 text-xs text-white focus:border-blue-500 outline-none"
-                              value={tempMilestone.amount}
-                              onChange={(e) => setTempMilestone({ ...tempMilestone, amount: Number(e.target.value) })}
+                              value={tempMilestone?.amount || ""}
+                              onChange={(e) => setTempMilestone(tempMilestone ? { ...tempMilestone, amount: Number(e.target.value) } : null)}
                             />
                           </div>
                           <div className="space-y-1.5">
                             <label className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Description</label>
                             <textarea 
                               className="w-full bg-[#0B101B] border border-[#1F2937] rounded px-3 py-2 text-xs text-white focus:border-blue-500 outline-none min-h-[80px]"
-                              value={tempMilestone.description}
-                              onChange={(e) => setTempMilestone({ ...tempMilestone, description: e.target.value })}
+                              value={tempMilestone?.description || ""}
+                              onChange={(e) => setTempMilestone(tempMilestone ? { ...tempMilestone, description: e.target.value } : null)}
                             />
                           </div>
                           <div className="flex justify-end gap-2">
@@ -497,6 +555,16 @@ export default function ProjectDetailsPage() {
                                    className="text-[10px] h-7 px-3 rounded border-[#1F2937] text-gray-400 hover:text-white self-end"
                                  >
                                    Create Real Milestone
+                                 </Button>
+                              )}
+
+                              {m.isActual && role === "client" && m.status === "pending" && (
+                                 <Button 
+                                   onClick={() => handleFund(m.id)} 
+                                   disabled={funding}
+                                   className="text-[10px] h-7 px-3 rounded bg-blue-600 text-white font-bold self-end"
+                                 >
+                                   {funding ? "Funding..." : "Fund Escrow"}
                                  </Button>
                               )}
 

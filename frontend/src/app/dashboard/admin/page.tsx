@@ -9,24 +9,45 @@ import { Button } from "@/components/ui/Button";
 import { toast } from "sonner";
 import { ShieldAlert, Users, CheckCircle } from "lucide-react";
 
+interface AdminStats {
+  totalUsers: number;
+  activeProjects: number;
+  openDisputes: number;
+  escrowVolume: number;
+}
+
+interface Dispute {
+  _id: string;
+  milestoneId?: { title?: string } | string;
+  reason: string;
+  status: string;
+}
+
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({ totalUsers: 0, activeProjects: 0, openDisputes: 0, escrowVolume: 0 });
-  const [disputes, setDisputes] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [stats, setStats] = useState<AdminStats>({ totalUsers: 0, activeProjects: 0, openDisputes: 0, escrowVolume: 0 });
+  const [disputes, setDisputes] = useState<Dispute[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [st, dsp, usr] = await Promise.all([
-        api.get<any>("/api/admin/stats").catch(() => null),
-        api.get<any[]>("/api/admin/disputes").catch(() => []),
-        api.get<any[]>("/api/admin/users").catch(() => [])
+        api.get<AdminStats>("/api/admin/stats").catch(() => null),
+        api.get<Dispute[]>("/api/admin/disputes").catch(() => []),
+        api.get<User[]>("/api/admin/users").catch(() => [])
       ]);
       if (st) setStats(st);
       if (dsp) setDisputes(dsp);
       if (usr) setUsers(usr);
-    } catch (e) {
+    } catch {
       toast.error("Failed to load admin data");
     } finally {
       setLoading(false);
@@ -42,8 +63,8 @@ export default function AdminDashboard() {
       await api.post(`/api/admin/disputes/${id}/resolve`, { resolution, notes: "Admin resolution via dashboard" });
       toast.success("Dispute resolved successfully!");
       fetchData();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to resolve dispute");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to resolve dispute");
     }
   };
 
@@ -87,7 +108,7 @@ export default function AdminDashboard() {
                   <div key={d._id} className="p-5 rounded-xl border border-[var(--accent-danger)]/20 bg-[var(--accent-danger)]/5">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <h3 className="font-bold text-white mb-1">Milestone: {d.milestoneId?.title || d.milestoneId}</h3>
+                        <h3 className="font-bold text-white mb-1">Milestone: {typeof d.milestoneId === "object" ? d.milestoneId?.title : d.milestoneId}</h3>
                         <p className="text-xs text-[var(--text-secondary)]">Reason: {d.reason}</p>
                       </div>
                       <Badge variant="danger">{d.status}</Badge>

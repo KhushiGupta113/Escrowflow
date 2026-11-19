@@ -1,9 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { HTMLMotionProps, motion } from "framer-motion";
 
-interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
+interface GlassCardProps extends HTMLMotionProps<"div"> {
+  children?: React.ReactNode;
   className?: string;
   glow?: "blue" | "violet" | "emerald" | "none";
   hover?: boolean;
@@ -22,7 +22,7 @@ export function GlassCard({ children, className = "", glow = "none", hover = tru
         ${glow === "emerald" ? "shadow-[var(--glow-emerald)]" : ""}
         ${className}
       `}
-      {...props as any}
+      {...props}
     >
       {/* Inner gradient highlight at top edge */}
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-t-2xl" />

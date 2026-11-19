@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
 
@@ -11,11 +10,28 @@ export default function WalletPage() {
 
   useEffect(() => {
     // Dummy fetch for wallet, we can hook it up later
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       setBalance({ available: 12000, pending: 45000, totalEscrow: 57000 });
       setLoading(false);
     }, 1000);
+    return () => clearTimeout(timer);
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-8 max-w-7xl mx-auto w-full">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Wallet</h1>
+          <p className="text-[var(--text-secondary)]">Manage your funds and withdraw earnings.</p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <GlassCard key={i} className="p-6 h-36 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8 max-w-7xl mx-auto w-full">

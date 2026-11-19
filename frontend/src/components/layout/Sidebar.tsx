@@ -6,25 +6,36 @@ import { LayoutDashboard, BriefcaseBusiness, Wallet, Settings, LogOut, Users, Fi
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import LogoLock from "../three/LogoLock";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { api } from "@/lib/api";
+
+function subscribe(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function getRoleSnapshot(): string {
+  if (typeof window === "undefined") return "client";
+  const token = localStorage.getItem("accessToken");
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.role || "client";
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return "client";
+}
+
+function getServerRoleSnapshot(): string {
+  return "client";
+}
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [role, setRole] = useState<string>("client");
-
-  useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setRole(payload.role);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, []);
+  const role = useSyncExternalStore(subscribe, getRoleSnapshot, getServerRoleSnapshot);
 
   const handleLogout = async () => {
     try {

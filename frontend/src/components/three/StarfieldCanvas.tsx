@@ -1,8 +1,21 @@
 "use client";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Stars } from "@react-three/drei";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import * as THREE from "three";
+
+function subscribeResize(callback: () => void) {
+  window.addEventListener("resize", callback);
+  return () => window.removeEventListener("resize", callback);
+}
+
+function getIsMobileSnapshot(): boolean {
+  return window.innerWidth < 768;
+}
+
+function getServerIsMobileSnapshot(): boolean {
+  return false;
+}
 
 function AnimatedGrid() {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -36,14 +49,7 @@ function FloatingOrb({ position, color }: { position: [number, number, number]; 
 }
 
 export default function StarfieldCanvas({ active = true }: { active?: boolean }) {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const isMobile = useSyncExternalStore(subscribeResize, getIsMobileSnapshot, getServerIsMobileSnapshot);
 
   return (
     <div className="fixed inset-0 -z-10 pointer-events-none bg-[var(--bg-base)]">

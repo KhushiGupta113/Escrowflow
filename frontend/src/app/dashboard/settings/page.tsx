@@ -1,13 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { api } from "@/lib/api";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Lock, Bell, CreditCard, Wallet, Link as LinkIcon, Camera, ShieldCheck, Mail, Briefcase, Code, Globe, IndianRupee, Building, Landmark, Smartphone } from "lucide-react";
+import { User, Lock, Bell, CreditCard, Wallet, Camera, ShieldCheck, Mail, Briefcase, Code, Globe, IndianRupee, Building, Landmark, Smartphone } from "lucide-react";
+
+interface UserProfileData {
+  name?: string;
+  email?: string;
+  bio?: string;
+  avatar?: string;
+  role?: string;
+  company?: string;
+  taxId?: string;
+  hourlyRate?: string;
+  github?: string;
+  linkedin?: string;
+}
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState({ 
@@ -19,7 +33,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
 
   useEffect(() => {
-    api.get<any>("/api/users/profile").then((res: any) => {
+    api.get<UserProfileData>("/api/users/profile").then((res) => {
       if (res) {
         setProfile(prev => ({
           ...prev,
@@ -43,8 +57,8 @@ export default function SettingsPage() {
       setLoading(true);
       await api.patch("/api/users/profile", profile);
       toast.success("Settings saved successfully!");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to update settings");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to update settings");
     } finally {
       setLoading(false);
     }
@@ -123,7 +137,7 @@ export default function SettingsPage() {
                     <div className="relative group cursor-pointer">
                       <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#1d283a] to-[#0a0f1a] border border-white/10 flex items-center justify-center overflow-hidden">
                         {profile.avatar ? (
-                          <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                          <Image src={profile.avatar} alt="Avatar" width={96} height={96} unoptimized className="w-full h-full object-cover" />
                         ) : (
                           <User size={40} className="text-white/20" />
                         )}

@@ -1,11 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  /* Base palette — deep space dark */
-  --bg-base: #060b14;
-  --bg-surface: #0d1526;
-  --bg-elevated: #162035;
-  --bg-glass: rgba(22, 32, 53, 0.6);
+  /* Base palette — matte-black void */
+  --bg-base: #000000;
+  --bg-surface: #040508;
+  --bg-elevated: #0a0e17;
+  --bg-glass: rgba(10, 14, 23, 0.4);
+
+  /* Reference Spec Overrides */
+  --font-heading: 'Helvetica Now Display Bold', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --color-text: #192837;
+  --color-accent: #7342E2;
+  --color-login-bg: #F2F2EE;
 
   /* Brand */
   --accent-primary: #4f8ef7;      /* electric blue */

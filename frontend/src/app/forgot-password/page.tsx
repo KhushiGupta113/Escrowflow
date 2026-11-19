@@ -24,8 +24,8 @@ export default function ForgotPasswordPage() {
       await api.post("/api/auth/otp/send", { email, type: "forgot_password" });
       setOtpSent(true);
       toast.success("OTP sent to your email!");
-    } catch (error: any) {
-      toast.error(error.message || "Email not found");
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Email not found");
     } finally {
       setSendingOtp(false);
     }
@@ -38,8 +38,8 @@ export default function ForgotPasswordPage() {
       await api.post("/api/auth/forgot-password", { email, otp, newPassword });
       toast.success("Password reset successful! Please login.");
       router.push("/login");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to reset password");
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Failed to reset password");
     } finally {
       setLoading(false);
     }

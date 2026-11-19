@@ -8,6 +8,14 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
+interface LoginResponse {
+  accessToken: string;
+  user: {
+    role: string;
+    [key: string]: unknown;
+  };
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -29,7 +37,7 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       setLoading(true);
-      const res = await api.post<any>("/api/auth/login", { email, password }) as any;
+      const res = await api.post<LoginResponse>("/api/auth/login", { email, password });
       const { accessToken, user } = res;
       localStorage.setItem("accessToken", accessToken);
       toast.success("Welcome back!");
@@ -43,8 +51,8 @@ export default function LoginPage() {
       } else {
         router.push("/");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to login");
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Failed to login");
     } finally {
       setLoading(false);
     }
@@ -91,7 +99,7 @@ export default function LoginPage() {
             </Button>
             
             <p className="text-center text-sm text-[var(--text-secondary)] mt-4">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <a href="/signup" className="font-semibold text-[var(--text-primary)] hover:text-[var(--accent-primary)] hover:underline transition-colors">
                 Create an account
               </a>

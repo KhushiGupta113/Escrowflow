@@ -1,37 +1,48 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Send, Loader2 } from "lucide-react";
+import { Sparkles, Send } from "lucide-react";
 import { GlassCard } from "./GlassCard";
 import { Button } from "./Button";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
+interface AIBriefResult {
+  title: string;
+  description: string;
+}
+
+interface ParsedMilestone {
+  title: string;
+  allocation: string;
+  details: string[];
+}
+
 export function AIDrafter() {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<AIBriefResult | null>(null);
   const [budget, setBudget] = useState(50000);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setLoading(true);
     try {
-      const data = await api.post("/api/ai/generate-brief", { prompt });
+      const data = await api.post<AIBriefResult>("/api/ai/generate-brief", { prompt });
       setResult(data);
       toast.success("Project brief generated!");
-    } catch (e: any) {
-      toast.error(e.message || "AI generation failed");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "AI generation failed");
     } finally {
       setLoading(false);
     }
   };
 
-  const parseSuggestedMilestones = (description: string) => {
-    const suggested: any[] = [];
+  const parseSuggestedMilestones = (description: string): ParsedMilestone[] => {
+    const suggested: ParsedMilestone[] = [];
     const milestoneRegex = /\*\*Milestone \d+:?\s*([^(]+?)\s*(?:\((\d+)%\))?\*\*/gi;
     let match;
     const milestoneIndices: number[] = [];
@@ -68,7 +79,7 @@ export function AIDrafter() {
     setCreating(true);
     try {
       // 1. Create the project
-      const projData = await api.post<any>("/api/projects", {
+      const projData = await api.post<{ _id?: string; project?: { _id: string }; data?: { _id: string } }>("/api/projects", {
         title: result.title,
         description: result.description,
         budget: budget
@@ -98,8 +109,8 @@ export function AIDrafter() {
 
       toast.success("Project and milestones created successfully!");
       router.push(`/dashboard/projects/${projectId}`);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to create project");
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to create project");
     } finally {
       setCreating(false);
     }
